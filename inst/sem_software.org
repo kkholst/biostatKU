@@ -1,0 +1,792 @@
+* Configuration 					      :ignoreheading:
+
+#+TITLE: Software for Structural Equation Modeling
+#+AUTHOR: Klaus Kähler Holst
+#+DATE: \today
+# +email: k.k.holst@biostat.ku.dk
+# +LaTeX_HEADER: \institute{Department of Biostatistics, University of Copenhagen}
+#+LANGUAGE:  en
+#+OPTIONS:   H:3 num:t toc:nil \n:nil @:t ::t |:t ^:t -:t f:t *:t <:t
+#+OPTIONS:   TeX:t LaTeX:t skip:nil d:nil todo:t pri:nil tags:not-in-toc
+#+OPTIONS: LaTeX:t 
+# +startup: beamer
+#+LaTeX_CLASS: plain
+#+LaTeX_CLASS_OPTIONS: [a4paper,12pt] 
+#+LaTeX_HEADER: \RequirePackage{etex}
+#+LaTeX_HEADER: \usepackage[utf8]{inputenc}
+#+LaTeX_HEADER: \RequirePackage[l2tabu,orthodox]{nag}% Old habits die hard. All the
+#+LaTeX_HEADER: \usepackage{fixltx2e}
+# +LaTeX_HEADER: \usepackage[all,error]{onlyamsmath}  % Error on deprecated math commands like $$ $$.
+#+LaTeX_HEADER: \usepackage[strict=true]{csquotes}
+#+LaTeX_HEADER: \newcommand{\usetheme}[1]{}
+#+LaTeX_HEADER: \textheight=9in \textwidth=6.5in \topmargin=-.50in \evensidemargin=0in \oddsidemargin=0in
+#+LaTeX_HEADER: \usepackage{graphicx} 
+#+LaTeX_HEADER: \usepackage[hidelinks,colorlinks,linkcolor={blue!50!black},urlcolor={blue!50!black},citecolor={blue!50!black}]{hyperref}
+#+LaTeX_HEADER: \usepackage{listings} 
+#+LaTeX_HEADER: \usepackage[usenames]{xcolor} 
+#+LaTeX_HEADER: \setlength{\unitlength}{.6pt}
+#+LaTeX_HEADER: \newcommand{\etal}{et al.}
+#+LaTeX_HEADER: \lstdefinestyle{R}{language=R,alsoletter={.},morekeywords={lvm}}
+#+LaTeX_HEADER: \lstdefinestyle{stata}{language=R}
+#+LaTeX_HEADER: \lstdefinestyle{Rplus}{language=R,alsoletter={.},
+#+LaTeX_HEADER: morekeywords={plot.lvm,latent,regression,lvm,sim,set.seed,with,lava.options,
+#+LaTeX_HEADER: geeglm,lmline,lmer,estimate,xyplot}} % BEGIN_SRC R,style=Rplus
+#+LATEX_HEADER: \include{listings-stata}
+#+LaTeX_HEADER: \usepackage{fancyvrb}
+#+LATEX_HEADER: \DefineVerbatimEnvironment{verbatim}{Verbatim}{
+#+LaTeX_HEADER:   frame=lines,fontsize=\footnotesize,%fontsize=\small,
+#+LATEX_HEADER: formatcom = {\color[rgb]{0.3,0.3,0.3}}}
+#+OPTIONS: toc:t
+
+#+LaTeX: \clearpage
+
+We will focus on a simple structural equation model shown in Figure ref:fig:lvma:
+#+NAME: lvma
+#+BEGIN_SRC R  :exports both :results output graphics :file figs/lvma.pdf :width 7 :height 7 :session *R*
+library('lava')
+m <- lvm(c(y1,y2,y3)~u,u~x,latent=~u)
+labels(m) <- c(u=expression(eta))
+plot(m)
+#+END_SRC
+
+
+#+BEGIN_CENTER
+#+CAPTION: Measurement model label:fig:lvma
+#+ATTR_LATEX: :width 6cm :options
+#+RESULTS: lvma
+[[file:figs/lvma.pdf]]
+
+#+END_CENTER
+
+
+Simulated data (notice long format):
+#+BEGIN_SRC R :exports both :results output :session *R*
+d <- subset(simulate(m,200,seed=1),select=manifest(m))
+write.table(d,file="data.tab",row.names=FALSE,sep="\t")
+head(d)
+#+END_SRC
+
+#+RESULTS:
+:           y1         y2         y3           x
+: 1 -2.0544296 -1.0185740 -0.3535348 -1.08690882
+: 2 -0.1400152  1.3652148  1.5719963 -1.82608301
+: 3  0.6879609  3.1101780  0.9205922  0.99528181
+: 4  2.1256104  0.1994218  0.1394618 -0.01186178
+: 5 -0.4067940 -3.0215373 -1.1525238 -0.59962839
+: 6 -2.1351502  1.1829797 -1.6903393 -0.17794799
+
+* PageBreak 						      :ignoreheading:
+#+LaTeX: \clearpage
+* =R=
+
+** =lava=
+
+- https://github.com/kkholst/lava
+- http://arxiv.org/abs/1206.3421
+
+#+BEGIN_SRC R :exports both :results output :session *R*
+library('lava')
+m1 <- lvm()
+regression(m1) <- c(y1,y2,y3)~u
+regression(m1) <- u~x
+covariance(m1) <- y2~y3
+summary(estimate(m1,d))
+#+END_SRC
+
+#+RESULTS:
+#+begin_example
+Latent variables: u 
+Number of rows in data=200
+______________________________________________________________________
+                    Estimate Std. Error  Z-value  P-value   std.xy
+Measurements:                                                     
+   y1~u              1.00000                               0.85222
+   y2~u              1.01708    0.08215 12.38030   <1e-12  0.85678
+   y3~u              1.01019    0.08186 12.34011   <1e-12  0.85468
+Regressions:                                                      
+   u~x               1.06038    0.09784 10.83740   <1e-12  0.71374
+Intercepts:                                                       
+   y1                0.00000                               0.00000
+   y2                0.00607    0.09807  0.06192   0.9506  0.00323
+   y3               -0.07678    0.09785 -0.78476   0.4326 -0.04101
+   u                -0.06455    0.10434 -0.61865   0.5361 -0.04074
+Residual Variances:                                               
+   y1                0.94595    0.16358  5.78273           0.27373
+   y2                0.94057    0.18872  4.98391           0.26593
+   y2,y3            -0.16322    0.15290 -1.06746   0.2858 -0.04635
+   y3                0.94504    0.18767  5.03559           0.26952
+   u                 1.23128    0.18158  6.78091           0.49058
+______________________________________________________________________
+Estimator: gaussian 
+______________________________________________________________________
+
+ Number of observations = 200 
+ BIC = 2074.994 
+ AIC = 2026.628 
+ log-Likelihood of model = -1002.314 
+
+ log-Likelihood of saturated model = -1002.182 
+ Chi-squared statistic: q = 0.2634556 , df = 1 
+  P(Q>q) = 0.607756 
+
+ RMSEA (90% CI): 0 (0;0.1498)
+  P(RMSEA<0.05)=0.6880038
+______________________________________________________________________
+R-squared 
+   y1    y2    y3     u 
+0.726 0.734 0.730 0.509 
+Variance explained by 'u' 
+   y1    y2    y3 
+0.726 0.734 0.730
+#+end_example
+
+
+** =lavaan=
+
+- https://github.com/yrosseel/lavaan
+- http://lavaan.ugent.be/
+
+#+BEGIN_SRC R :exports both :results output :session *R*
+library('lavaan')
+modelb <- ' 
+# latent variable definitions
+u =~ y1 + y2 + y3
+# regressions
+u ~ x
+## residual covvariance
+y2 ~~y3
+'
+summary(lavaan::sem(modelb,data=d))
+#+END_SRC
+
+#+RESULTS:
+#+begin_example
+lavaan (0.5-20) converged normally after  21 iterations
+
+  Number of observations                           200
+
+  Estimator                                         ML
+  Minimum Function Test Statistic                0.263
+  Degrees of freedom                                 1
+  P-value (Chi-square)                           0.608
+
+Parameter Estimates:
+
+  Information                                 Expected
+  Standard Errors                             Standard
+
+Latent Variables:
+                   Estimate  Std.Err  Z-value  P(>|z|)
+  u =~                                                
+    y1                1.000                           
+    y2                1.017    0.082   12.380    0.000
+    y3                1.010    0.082   12.340    0.000
+
+Regressions:
+                   Estimate  Std.Err  Z-value  P(>|z|)
+  u ~                                                 
+    x                 1.060    0.098   10.837    0.000
+
+Covariances:
+                   Estimate  Std.Err  Z-value  P(>|z|)
+  y2 ~~                                               
+    y3               -0.163    0.153   -1.067    0.286
+
+Variances:
+                   Estimate  Std.Err  Z-value  P(>|z|)
+    y1                0.946    0.164    5.783    0.000
+    y2                0.941    0.189    4.984    0.000
+    y3                0.945    0.188    5.036    0.000
+    u                 1.231    0.182    6.781    0.000
+#+end_example
+
+** =sem=
+
+- https://cran.r-project.org/web/packages/sem/index.html
+
+#+BEGIN_SRC R :exports both :results output :session *R*
+  library('sem')
+  modela <- specifyModel(covs=c("x","y2,y3"),
+                             text="
+  e -> y1,  NA,   1
+  e -> y2,  lam2, NA
+  e -> y3,  lam3, NA
+  x -> e,   b,   NA
+  ")
+  summary(sem::sem(modela,data=d))
+#+END_SRC
+
+#+RESULTS:
+#+begin_example
+ Read 4 records
+NOTE: it is generally simpler to use specifyEquations() or cfa()
+      see ?specifyEquations
+NOTE: adding 2 variances to the model
+
+ Model Chisquare =  0.2621384   Df =  1 Pr(>Chisq) = 0.6086549
+ AIC =  18.26214
+ BIC =  -5.036179
+
+ Normalized Residuals
+      Min.    1st Qu.     Median       Mean    3rd Qu.       Max. 
+-1.035e-01 -1.129e-02  2.500e-07 -9.774e-05  1.145e-02  1.021e-01 
+
+ R-square for Endogenous Variables
+     e     y1     y2     y3 
+0.5094 0.7263 0.7341 0.7305 
+
+ Parameter Estimates
+         Estimate   Std Error  z value   Pr(>|z|)               
+lam2      1.0170782 0.08235911 12.349311 4.913029e-35 y2 <--- e 
+lam3      1.0101923 0.08206794 12.309220 8.080078e-35 y3 <--- e 
+b         1.0603838 0.09809037 10.810275 3.077463e-27 e <--- x  
+V[x]      1.1428136 0.11456813  9.974969 1.961633e-23 x <--> x  
+V[y2]     0.9452969 0.19014577  4.971432 6.646004e-07 y2 <--> y2
+C[y2,y3] -0.1640403 0.15405894 -1.064789 2.869713e-01 y3 <--> y2
+V[y3]     0.9497850 0.18908758  5.022990 5.087322e-07 y3 <--> y3
+V[e]      1.2374661 0.18295047  6.763941 1.342882e-11 e <--> e  
+V[y1]     0.9507045 0.16481660  5.768257 8.009548e-09 y1 <--> y1
+
+ Iterations =  22
+#+end_example
+
+** =openMx=
+
+
+- http://openmx.psyc.virginia.edu/
+- https://github.com/OpenMx/OpenMx
+
+** COMMENT Session Information
+
+#+BEGIN_SRC R :exports both :results output :session *R* 
+sessionInfo()
+#+END_SRC
+
+#+RESULTS:
+#+begin_example
+R version 3.3.1 (2016-06-21)
+Platform: x86_64-redhat-linux-gnu (64-bit)
+Running under: Fedora 24 (Workstation Edition)
+
+locale:
+ [1] LC_CTYPE=en_US.UTF-8       LC_NUMERIC=C              
+ [3] LC_TIME=en_US.UTF-8        LC_COLLATE=en_US.UTF-8    
+ [5] LC_MONETARY=en_US.UTF-8    LC_MESSAGES=en_US.UTF-8   
+ [7] LC_PAPER=en_US.UTF-8       LC_NAME=C                 
+ [9] LC_ADDRESS=C               LC_TELEPHONE=C            
+[11] LC_MEASUREMENT=en_US.UTF-8 LC_IDENTIFICATION=C       
+
+attached base packages:
+[1] stats     graphics  grDevices utils     datasets  methods   base     
+
+other attached packages:
+[1] mplus_1.0              microbenchmark_1.4-2.1 sem_3.1-8             
+[4] lavaan_0.5-20          lava_1.4.4            
+
+loaded via a namespace (and not attached):
+ [1] Rcpp_0.12.6         compiler_3.3.1      nloptr_1.0.4       
+ [4] influenceR_0.1.0    plyr_1.8.4          tools_3.3.1        
+ [7] boot_1.3-18         lme4_1.1-12         digest_0.6.10      
+[10] gtable_0.2.0        jsonlite_1.0        nlme_3.1-128       
+[13] lattice_0.20-33     Matrix_1.2-6        graph_1.44.1       
+[16] igraph_1.0.1        rstudioapi_0.6      Rgraphviz_2.10.0   
+[19] yaml_2.1.13         parallel_3.3.1      mvtnorm_1.0-5      
+[22] pbivnorm_0.6.0      coda_0.18-1         DiagrammeR_0.8.4   
+[25] stringr_1.0.0       htmlwidgets_0.7     stats4_3.3.1       
+[28] grid_3.3.1          mi_1.0              survival_2.39-5    
+[31] arm_1.8-6           multcomp_1.4-6      TH.data_1.0-7      
+[34] minqa_1.2.4         ggplot2_2.1.0       magrittr_1.5       
+[37] codetools_0.2-14    scales_0.4.0        htmltools_0.3.5    
+[40] matrixcalc_1.0-3    MASS_7.3-45         splines_3.3.1      
+[43] BiocGenerics_0.12.1 abind_1.4-5         mnormt_1.5-4       
+[46] colorspace_1.2-6    quadprog_1.5-5      sandwich_2.3-4     
+[49] stringi_1.1.1       visNetwork_1.0.1    munsell_0.4.3      
+[52] zoo_1.7-13
+#+end_example
+
+* PageBreak 						      :ignoreheading:
+#+LaTeX: \clearpage
+* Stata 
+
+- http://www.stata.com/manuals13/sem.pdf (since version 13, =gsem= version 14)
+
+#+BEGIN_SRC stata :session *stata* :exports both
+insheet using "data.tab", clear
+sem (y1 y2 y3 <- U) (U <- x), cov(e.y2*e.y3)
+#+END_SRC
+
+#+RESULTS:
+#+begin_example
+(4 vars, 200 obs)
+
+Endogenous variables
+
+Measurement:  y1 y2 y3
+Latent:       U
+
+Exogenous variables
+
+Observed:     x
+
+Fitting target model:
+
+Iteration 0:   log likelihood = -1299.5308  
+Iteration 1:   log likelihood = -1298.9631  
+Iteration 2:   log likelihood = -1298.9498  
+Iteration 3:   log likelihood = -1298.9498  
+
+Structural equation model                       Number of obs      =       200
+Estimation method  = ml
+Log likelihood     = -1298.9498
+
+ ( 1)  [y1]U = 1
+------------------------------------------------------------------------------
+             |                 OIM
+             |      Coef.   Std. Err.      z    P>|z|     [95% Conf. Interval]
+-------------+----------------------------------------------------------------
+Structural   |
+  U <-       |
+           x |   1.060384   .0978448    10.84   0.000     .8686115    1.252156
+-------------+----------------------------------------------------------------
+Measurement  |
+  y1 <-      |
+           U |          1  (constrained)
+       _cons |  -.0645497    .104339    -0.62   0.536    -.2690504     .139951
+  -----------+----------------------------------------------------------------
+  y2 <-      |
+           U |   1.017078   .0825774    12.32   0.000     .8552297    1.178927
+       _cons |  -.0595797   .1052225    -0.57   0.571     -.265812    .1466525
+  -----------+----------------------------------------------------------------
+  y3 <-      |
+           U |   1.010192   .0814747    12.40   0.000     .8505049     1.16988
+       _cons |  -.1419926   .1049197    -1.35   0.176    -.3476314    .0636463
+-------------+----------------------------------------------------------------
+    var(e.y1)|   .9459512   .1636727                      .6738916    1.327845
+    var(e.y2)|     .94057   .1901889                      .6328095    1.398007
+    var(e.y3)|   .9450358   .1863511                      .6420965    1.390901
+     var(e.U)|   1.231279   .1816616                      .9220848    1.644151
+-------------+----------------------------------------------------------------
+    cov(e.y2,|
+        e.y3)|  -.1632204   .1529111    -1.07   0.286    -.4629207    .1364798
+------------------------------------------------------------------------------
+LR test of model vs. saturated: chi2(1)   =      0.26, Prob > chi2 = 0.6078
+#+end_example
+
+* PageBreak 						      :ignoreheading:
+#+LaTeX: \clearpage
+* SAS
+
+- https://support.sas.com/documentation/onlinedoc/stat/131/calis.pdf
+- https://support.sas.com/documentation/cdl/en/statugtcalis/61840/PDF/default/statugtcalis.pdf
+- https://support.sas.com/documentation/onlinedoc/stat/131/tcalis.pdf
+
+#+BEGIN_SRC SAS
+proc import datafile="data.tab" out=simdata dbms=tab replace;
+     getnames=yes;
+run;
+   
+proc calis data=simdata outstat=ostat;
+     lineqs
+         y1 =  1*f0 + e1,
+         y2 = a2*f0 + e2,
+         y3 = a3*f0 + e3,
+         f0 =  b*x  + d;
+     variance
+         e1-e3 d;
+     cov
+         e2 e3 = pv;
+run;
+#+END_SRC
+
+
+#+LaTeX: \DefineVerbatimEnvironment{verbatim}{Verbatim}{fontsize=\footnotesize,formatcom = {\color[rgb]{0.5,0,0}}}
+#+BEGIN_EXAMPLE
+                                                           The SAS System                        21:43 Thursday, August 18, 2016   1
+
+                                                        The CALIS Procedure
+                                      Mean and Covariance Structures: Model and Initial Values
+
+                                                       Modeling Information
+                                                   Maximum Likelihood Estimation
+
+                                             Data Set            WORK.SIMDATA         
+                                             N Records Read      200                  
+                                             N Records Used      200                  
+                                             N Obs               200                  
+                                             Model Type          LINEQS               
+                                             Analysis            Means and Covariances
+
+
+                                                      Variables in the Model
+
+                                              Endogenous    Manifest    y1  y2  y3   
+                                                            Latent      f0           
+                                              Exogenous     Manifest    x            
+                                                            Latent                   
+                                                            Error       e1  e2  e3  d
+
+                                                Number of Endogenous Variables = 4
+                                                Number of Exogenous Variables  = 5
+
+
+                                              Initial Estimates for Linear Equations
+
+                                            y1 =   m1(.) Intercept  +   1   f0  +  1 e1
+                                            y2 =   m2(.) Intercept  + a2(.) f0  +  1 e2
+                                            y3 =   m3(.) Intercept  + a3(.) f0  +  1 e3
+                                            f0 =    b(.) x          +   1   d          
+
+
+                                       Initial Estimates for Variances of Exogenous Variables
+ 
+                                         Variable
+                                         Type           Variable    Parameter      Estimate
+
+                                         Error          e1          _Parm1                .
+                                                        e2          _Parm2                .
+                                                        e3          _Parm3                .
+                                         Disturbance    d           _Parm4                .
+                                         Observed       x           _Add1                 .
+
+                                    NOTE: Parameters with prefix '_Add' are added by PROC CALIS.
+
+
+                                    Initial Estimates for Covariances Among Exogenous Variables
+ 
+                                              Var1    Var2    Parameter      Estimate
+
+                                              e2      e3      pv                    .
+
+
+                                      Mean and Covariance Structures: Model and Initial Values
+
+                                               Initial Estimates for Mean Parameters
+ 
+                                          Variable
+                                          Type        Variable    Parameter      Estimate
+
+                                          Observed    x           _Add2                 .
+
+                                    NOTE: Parameters with prefix '_Add' are added by PROC CALIS.
+
+                                       Mean and Covariance Structures: Descriptive Statistics
+
+                                                         Simple Statistics
+ 
+                                                Variable          Mean       Std Dev
+
+                                                y1            -0.05705       1.86364
+                                                y2            -0.05195       1.88538
+                                                y3            -0.13442       1.87721
+                                                x              0.00707       1.06902
+
+                                            Mean and Covariance Structures: Optimization
+
+                                                     Initial Estimation Methods
+
+                                                    1    Observed Moments of Variables
+                                                    2    Instrumental Variables Method
+                                                    3    McDonald Method              
+                                                    4    Two-Stage Least Squares      
+
+
+                                                         Optimization Start
+                                                         Parameter Estimates
+ 
+                                               N    Parameter      Estimate      Gradient
+
+                                               1    m1             -0.06441    4.1253E-18
+                                               2    m2             -0.05892    -9.526E-18
+                                               3    a2              0.94748      -0.00625
+                                               4    m3             -0.14142    2.8277E-18
+                                               5    a3              0.95142       0.01096
+                                               6    b               1.04034      -0.07582
+                                               7    _Parm1          0.78011      -0.02094
+                                               8    _Parm2          1.13705       0.02036
+                                               9    _Parm3          1.08619       0.00715
+                                              10    _Parm4          1.45618       0.04386
+                                              11    _Add1           1.14281    2.7756E-17
+                                              12    pv              0.00100       0.02982
+                                              13    _Add2           0.00707    3.8519E-34
+
+                                             Value of Objective Function = 0.0150622845
+
+                                            Mean and Covariance Structures: Optimization
+
+                                                  Levenberg-Marquardt Optimization
+
+                                                   Scaling Update of More (1978)
+
+                                              Parameter Estimates                   13
+                                              Functions (Observations)              14
+
+                                                         Optimization Start
+
+            Active Constraints                                  0  Objective Function                       0.0150622845
+            Max Abs Gradient Element                 0.0758231288  Radius                                              1
+
+
+                                                                                                                    Ratio
+                                                                                                                  Between
+                                                                                                                   Actual
+                                                                            Objective     Max Abs                     and
+                                Function         Active        Objective     Function    Gradient               Predicted
+           Iter     Restarts       Calls    Constraints         Function       Change     Element     Lambda       Change
+
+              1            0           4              0          0.00142       0.0136     0.00856          0        1.086
+              2            0           6              0          0.00132     0.000107    0.000192          0        0.967
+              3            0           8              0          0.00132     1.659E-7    9.562E-6          0        0.959
+
+                                                        Optimization Results
+
+            Iterations                                          3  Function Calls                                     11
+            Jacobian Calls                                      5  Active Constraints                                  0
+            Objective Function                       0.0013172785  Max Abs Gradient Element                 9.5619881E-6
+            Lambda                                              0  Actual Over Pred Change                  0.9586452396
+            Radius                                   0.0017132785                                                       
+
+                 Convergence criterion (ABSGCONV=0.00001) satisfied.                                               
+
+                                   Mean and Covariance Structures: Maximum Likelihood Estimation
+
+                                                            Fit Summary
+
+                                Modeling Info        Number of Observations                     200
+                                                     Number of Variables                          4
+                                                     Number of Moments                           14
+                                                     Number of Parameters                        13
+                                                     Number of Active Constraints                 0
+                                                     Baseline Model Function Value           2.2497
+                                                     Baseline Model Chi-Square             447.6844
+                                                     Baseline Model Chi-Square DF                 6
+                                                     Pr > Baseline Model Chi-Square          <.0001
+                                Absolute Index       Fit Function                            0.0013
+                                                     Chi-Square                              0.2621
+                                                     Chi-Square DF                                1
+                                                     Pr > Chi-Square                         0.6087
+                                                     Z-Test of Wilson & Hilferty            -0.2923
+                                                     Hoelter Critical N                        2917
+                                                     Root Mean Square Residual (RMR)         0.0084
+                                                     Standardized RMR (SRMR)                 0.0036
+                                                     Goodness of Fit Index (GFI)             0.9993
+                                Parsimony Index      Adjusted GFI (AGFI)                     0.9908
+                                                     Parsimonious GFI                        0.1666
+                                                     RMSEA Estimate                          0.0000
+                                                     RMSEA Lower 90% Confidence Limit        0.0000
+                                                     RMSEA Upper 90% Confidence Limit        0.1500
+                                                     Probability of Close Fit                0.6884
+                                                     Akaike Information Criterion           26.2621
+                                                     Bozdogan CAIC                          82.1403
+                                                     Schwarz Bayesian Criterion             69.1403
+                                                     McDonald Centrality                     1.0018
+                                Incremental Index    Bentler Comparative Fit Index           1.0000
+                                                     Bentler-Bonett NFI                      0.9994
+                                                     Bentler-Bonett Non-normed Index         1.0100
+                                                     Bollen Normed Index Rho1                0.9965
+                                                     Bollen Non-normed Index Delta2          1.0017
+                                                     James et al. Parsimonious NFI           0.1666
+
+                                   Mean and Covariance Structures: Maximum Likelihood Estimation
+
+                                                         Linear Equations
+
+                                  y1 =    -0.0645(ns) Intercept  +   1.0000     f0  +   1.0000 e1
+                                  y2 =    -0.0596(ns) Intercept  +   1.0171(**) f0  +   1.0000 e2
+                                  y3 =    -0.1420(ns) Intercept  +   1.0102(**) f0  +   1.0000 e3
+                                  f0 =     1.0604(**) x          +   1.0000     d                
+
+
+                                                    Effects in Linear Equations
+ 
+                                                                              Standard
+                     Variable     Predictor     Parameter       Estimate         Error     t Value    Pr > |t|
+
+                     y1           Intercept     m1              -0.06455       0.10486     -0.6156      0.5382
+                     y1           f0                             1.00000                                      
+                     y2           Intercept     m2              -0.05958       0.10575     -0.5634      0.5732
+                     y2           f0            a2               1.01708       0.08236     12.3492      <.0001
+                     y3           Intercept     m3              -0.14199       0.10545     -1.3466      0.1781
+                     y3           f0            a3               1.01020       0.08207     12.3092      <.0001
+                     f0           x             b                1.06038       0.09809     10.8103      <.0001
+
+
+                                           Estimates for Variances of Exogenous Variables
+ 
+                      Variable                                                Standard
+                      Type           Variable    Parameter      Estimate         Error     t Value    Pr > |t|
+
+                      Error          e1          _Parm1          0.95073       0.16482      5.7684      <.0001
+                                     e2          _Parm2          0.94530       0.19015      4.9714      <.0001
+                                     e3          _Parm3          0.94976       0.18909      5.0229      <.0001
+                      Disturbance    d           _Parm4          1.23744       0.18295      6.7639      <.0001
+                      Observed       x           _Add1           1.14281       0.11457      9.9750      <.0001
+
+
+                                               Covariances Among Exogenous Variables
+ 
+                                                                        Standard
+                           Var1    Var2    Parameter      Estimate         Error     t Value    Pr > |t|
+
+                           e2      e3      pv             -0.16405       0.15406     -1.0649      0.2869
+
+
+                                                          Mean Parameters
+ 
+                       Variable                                             Standard
+                       Type        Variable    Parameter      Estimate         Error     t Value    Pr > |t|
+
+                       Observed    x           _Add2           0.00707       0.07578      0.0933      0.9257
+
+
+
+                                   Mean and Covariance Structures: Maximum Likelihood Estimation
+
+                                                   Squared Multiple Correlations
+ 
+                                                           Error         Total
+                                          Variable      Variance      Variance    R-Square
+
+                                          y1             0.95073       3.47317      0.7263
+                                          y2             0.94530       3.55465      0.7341
+                                          y3             0.94976       3.52393      0.7305
+                                          f0             1.23744       2.52244      0.5094
+
+                                   Mean and Covariance Structures: Maximum Likelihood Estimation
+
+                                             Standardized Results for Linear Equations
+
+                                               y1 =     0.8522(**) f0  +   1.0000 e1
+                                               y2 =     0.8568(**) f0  +   1.0000 e2
+                                               y3 =     0.8547(**) f0  +   1.0000 e3
+                                               f0 =     0.7137(**) x   +   1.0000 d 
+
+
+                                             Standardized Effects in Linear Equations
+ 
+                                                                              Standard
+                     Variable     Predictor     Parameter       Estimate         Error     t Value    Pr > |t|
+
+                     y1           f0                             0.85221       0.02987     28.5265      <.0001
+                     y2           f0            a2               0.85678       0.03298     25.9769      <.0001
+                     y3           f0            a3               0.85468       0.03317     25.7633      <.0001
+                     f0           x             b                0.71374       0.03964     18.0060      <.0001
+
+
+                                     Standardized Results for Variances of Exogenous Variables
+ 
+                      Variable                                                Standard
+                      Type           Variable    Parameter      Estimate         Error     t Value    Pr > |t|
+
+                      Error          e1          _Parm1          0.27374       0.05092      5.3760      <.0001
+                                     e2          _Parm2          0.26593       0.05652      4.7054      <.0001
+                                     e3          _Parm3          0.26952       0.05671      4.7528      <.0001
+                      Disturbance    d           _Parm4          0.49057       0.05658      8.6698      <.0001
+                      Observed       x           _Add1           1.00000                                      
+
+
+                                  Standardized Results for Covariances Among Exogenous Variables
+ 
+                                                                        Standard
+                           Var1    Var2    Parameter      Estimate         Error     t Value    Pr > |t|
+
+                           e2      e3      pv             -0.04635       0.04358     -1.0637      0.2875
+
+#+END_EXAMPLE
+
+* PageBreak 						      :ignoreheading:
+#+LaTeX: \clearpage
+
+* Mplus
+
+http://www.statmodel.com/ugexcerpts.shtml
+http://www.statmodel.com/techappen.shtml
+
+#+BEGIN_SRC sh
+TITLE: SEM Example 
+DATA: FILE="data.tab";
+VARIABLE:
+   NAMES ARE y1 y2 y3 x;
+USEVARIABLES=y1 y2 y3 x 
+MISSING=.;
+ESTIMATOR=ML;
+INFORMATION=EXPECTED;
+ITERATIONS=5000;
+CONVERGENCE=0.00005;
+!-----------------------------------------------------
+MODEL:
+  u by y1;
+  u by y2;
+  u by y3;
+  u on x;
+  y2 with y3;
+!-----------------------------------------------------
+OUTPUT: STANDARDIZED;
+!           SAMPSTAT;RESIDUAL;CINTERVAL;MODINDICES(0);
+#+END_SRC
+
+#+BEGIN_EXAMPLE
+MODEL RESULTS
+
+                   Estimates     S.E.  Est./S.E.    Std     StdYX
+
+ U        BY
+    Y1                 1.000    0.000      0.000    1.584    0.852
+    Y2                 1.017    0.082     12.381    1.611    0.857
+    Y3                 1.010    0.082     12.340    1.600    0.855
+
+ U        ON
+    X                  1.060    0.098     10.838    0.669    0.714
+
+ Y2       WITH
+    Y3                -0.163    0.153     -1.067   -0.163   -0.046
+
+ Intercepts
+    Y1                -0.065    0.104     -0.619   -0.065   -0.035
+    Y2                -0.060    0.105     -0.566   -0.060   -0.032
+    Y3                -0.142    0.105     -1.353   -0.142   -0.076
+
+ Residual Variances
+    Y1                 0.946    0.164      5.783    0.946    0.274
+    Y2                 0.940    0.189      4.983    0.940    0.266
+    Y3                 0.945    0.188      5.036    0.945    0.270
+    U                  1.231    0.182      6.781    0.491    0.491
+
+R-SQUARE
+
+    Observed
+    Variable  R-Square
+
+    Y1           0.726
+    Y2           0.734
+    Y3           0.730
+
+     Latent
+    Variable  R-Square
+
+    U            0.509
+#+END_EXAMPLE
+
+
+** Parameter constraints
+
+Equality constraints are defined with a number in parantheses such
+that parameters with the same number are identical. Parameters can be
+fixed with the @ symbol. Intercepts are specified with square brackets. As
+an example we can specify a random intercept model using the following code
+
+#+BEGIN_SRC bash
+MODEL:
+  eta by y1@1;
+  eta by y2@1; 
+  [eta@0];
+  [y1](1);
+  [y2](1);
+  y1(2);
+  y2(2);
+#+END_SRC
+Here the factor loading from =eta= to =y1= and =y2= are both set to 1. The
+intercept of =eta= is set to zero. The intercepts of both endogenous
+variables are set to the same parameter and likewise for the residual
+variances.
+
+http://www.statmodel.com/language.html
